@@ -29,9 +29,9 @@ async function main() {
   const env = process.env;
 
   // 1. SCAN
-  const { messages, maxRowId, watermark, statePath } = scan.readNewMessages({ env });
-  log(`[scan] ${messages.length} new inbound message(s) since ROWID ${watermark}`);
-  if (!messages.length) { log('[done] nothing new.'); return; }
+  const { messages, maxRowId, watermark, totalNew, capped, statePath } = scan.readNewMessages({ env });
+  log(`[scan] ${totalNew} new inbound since ROWID ${watermark}; ${messages.length} kept for sifting${capped ? ' (capped to recent slice — raise MAX_MESSAGES to reach further back)' : ''}`);
+  if (!messages.length) { log('[done] nothing to sift.'); return; }
 
   // 2. SIFT (regex gate → Haiku only on the maybes)
   const confirmed = await siftMessages(messages, { isTaskFn: (t) => isTask(t, env), minLength: Number(env.MIN_MESSAGE_LENGTH || 6) });

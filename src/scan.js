@@ -61,9 +61,19 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
     if (fs.existsSync(src + suffix)) { try { fs.copyFileSync(src + suffix, copy + suffix); } catch {} }
   }
 
+  // Cap each run to the most recent N inbound messages so a first run (watermark 0)
+  // never tries to chew through the whole history. The watermark still advances to
+  // the true max, so skipped-old messages are not reprocessed next time. Raise
+  // MAX_MESSAGES to reach further back in one run.
+  const maxMessages = Number(env.MAX_MESSAGES || 200);
   const db = new DatabaseSync(copy, { readOnly: true });
-  let rows;
+  let rows, totalNew, trueMax;
   try {
+    const c = db.prepare(
+      `SELECT COUNT(*) AS n, MAX(ROWID) AS mx FROM message WHERE ROWID > ? AND is_from_me = 0`
+    ).get(watermark);
+    totalNew = Number(c.n || 0);
+    trueMax = c.mx != null ? Number(c.mx) : watermark;
     rows = db.prepare(`
       SELECT m.ROWID as rowId, m.text as text, m.attributedBody as attributedBody,
              m.is_from_me as isFromMe,
@@ -73,8 +83,10 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
       LEFT JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
       LEFT JOIN chat c ON c.ROWID = cmj.chat_id
       WHERE m.ROWID > ? AND m.is_from_me = 0
-      ORDER BY m.ROWID ASC
-    `).all(watermark);
+      ORDER BY m.ROWID DESC
+      LIMIT ?
+    `).all(watermark, maxMessages);
+    rows.reverse(); // process oldest-to-newest within the recent slice
   } finally {
     db.close();
   }
@@ -88,8 +100,9 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
   }));
 
   const kept = messages.filter((m) => keepMessage(m, { ignoreNumbers, minLength }));
-  const maxRowId = rows.length ? Number(rows[rows.length - 1].rowId) : watermark;
-  return { messages: kept, maxRowId, watermark, statePath: state };
+  const maxRowId = trueMax;
+  const capped = totalNew > rows.length;
+  return { messages: kept, maxRowId, watermark, totalNew, capped, statePath: state };
 }
 
 module.exports = {

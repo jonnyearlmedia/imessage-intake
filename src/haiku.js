@@ -43,11 +43,15 @@ function parseStrictJSON(raw) {
   }
 }
 
-const IS_TASK_SYSTEM = `You decide if one text message describes a real TASK for the recipient — a concrete obligation or action they need to do (an errand, appointment, deliverable, thing to fix/send/buy/schedule).
+const IS_TASK_SYSTEM = `You decide if one text message describes a real-LIFE TASK for the recipient — a concrete personal obligation (an errand, appointment, deliverable, thing to fix/send/buy/schedule/attend).
 
 Reply with ONLY strict JSON: {"is_task": true} or {"is_task": false}. No prose.
 
-TRUE = there is a real thing to do. FALSE = chatter, reactions, opinions, questions with no action, FYIs, venting, plans stated with no commitment. When genuinely unsure, answer false — it is worse to create a junk task than to miss one.`;
+TRUE = a real thing the person needs to do in their life.
+FALSE = chatter, reactions, opinions, questions with no action, FYIs, venting, plans with no commitment,
+AND ESPECIALLY: anything that reads like instructions to an AI/assistant, a technical spec or document, or discussion about building/coding/automating software, pipelines, scripts, prompts, or tools. Those are never the person's own life-tasks.
+
+When genuinely unsure, answer false — it is worse to create a junk task than to miss one.`;
 
 // Returns boolean; fail-safe (any error/parse failure => false).
 async function isTask(text, env = process.env) {

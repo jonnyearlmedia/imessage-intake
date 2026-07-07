@@ -40,4 +40,17 @@ function partitionDuplicates(candidates, existingTasks, windowMin = 30) {
   return { fresh, duplicates };
 }
 
-module.exports = { normalizeTitle, sameTime, isDuplicate, partitionDuplicates };
+// Collapse duplicates WITHIN one batch (same title + time) — keeps the first,
+// drops later repeats. Fixes one plan discussed across several texts becoming
+// several identical tasks in a single run.
+function dedupeWithinBatch(tasks, windowMin = 30) {
+  const kept = [];
+  for (const t of tasks) {
+    const dup = kept.some((k) =>
+      normalizeTitle(k.title) === normalizeTitle(t.title) && sameTime(k.startDate, t.startDate, windowMin));
+    if (!dup) kept.push(t);
+  }
+  return kept;
+}
+
+module.exports = { normalizeTitle, sameTime, isDuplicate, partitionDuplicates, dedupeWithinBatch };

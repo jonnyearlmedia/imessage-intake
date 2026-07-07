@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { normalizeTitle, sameTime, isDuplicate, partitionDuplicates } = require('../src/dedup');
+const { normalizeTitle, sameTime, isDuplicate, partitionDuplicates, dedupeWithinBatch } = require('../src/dedup');
 
 test('normalizeTitle strips emoji + punctuation + case', () => {
   assert.strictEqual(normalizeTitle('🎬 MGK Shoot!'), 'mgk shoot');
@@ -19,6 +19,16 @@ test('isDuplicate: same normalized title + close time', () => {
   assert.ok(isDuplicate({ title: '🧠 Therapy Session', startDate: '2026-07-09T14:10:00-07:00' }, existing));
   assert.ok(!isDuplicate({ title: '🧠 Therapy Session', startDate: '2026-07-10T14:00:00-07:00' }, existing));
   assert.ok(!isDuplicate({ title: '🛒 Grocery Run', startDate: '2026-07-09T14:00:00-07:00' }, existing));
+});
+
+test('dedupeWithinBatch drops same-title repeats in one run (the double sunglasses)', () => {
+  const out = dedupeWithinBatch([
+    { title: "📮 Mail Richard's Sunglasses" },
+    { title: "📬 Mail Richard's Sunglasses" },
+    { title: '🧺 Do Laundry' },
+  ]);
+  assert.strictEqual(out.length, 2);
+  assert.deepStrictEqual(out.map((t) => normalizeTitle(t.title)), ['mail richard s sunglasses', 'do laundry']);
 });
 
 test('partitionDuplicates separates fresh from dupes', () => {

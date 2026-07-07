@@ -18,7 +18,7 @@ const { siftMessages } = require('./src/sift');
 const { isTask } = require('./src/haiku');
 const { scheduleTask } = require('./src/schedule');
 const { partitionScheduled } = require('./src/schema');
-const { partitionDuplicates } = require('./src/dedup');
+const { partitionDuplicates, dedupeWithinBatch } = require('./src/dedup');
 const ticktick = require('./src/ticktick');
 
 const POST = process.argv.includes('--post') || process.env.POST === '1';
@@ -65,8 +65,11 @@ async function main() {
       try { existing = existing.concat(await ticktick.listProjectTasks(pid, env)); } catch {}
     }
   }
-  const { fresh, duplicates } = partitionDuplicates(planned, existing);
-  duplicates.forEach((d) => log(`[dedup] skip duplicate: ${d.title}`));
+  // collapse repeats within this run first, then against existing tasks
+  const unique = dedupeWithinBatch(planned);
+  if (unique.length < planned.length) log(`[dedup] collapsed ${planned.length - unique.length} repeat(s) within this run`);
+  const { fresh, duplicates } = partitionDuplicates(unique, existing);
+  duplicates.forEach((d) => log(`[dedup] skip duplicate of existing task: ${d.title}`));
 
   // POST or DRY-RUN
   if (!POST) {

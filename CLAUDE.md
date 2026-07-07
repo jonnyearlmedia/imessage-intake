@@ -6,7 +6,8 @@ way Jonny schedules things.
 
 **This file is the single source of truth for this repo's architecture.** Do not
 add a `SKILL.md` here, and do not copy scheduling rules into a second file that
-can drift out of sync. If a rule changes, change it here.
+can drift out of sync. If a rule changes, change it here. (`ROADMAP.md` is the
+plain-English companion — the story and operator's cheat sheet, not the rules.)
 
 ---
 
@@ -76,9 +77,10 @@ Away events get a **live drive-time** lookup (Google Routes API) with the static
 table as fallback, plus Jonny's padding stack (see rules).
 
 ### 4. Dedup + Post
-- Before posting, pull existing tasks from the relevant TickTick projects and drop
-  any candidate that matches an existing task by normalized title + time. This is
-  Jonny's #1 rule: **never double-add.**
+- Collapse repeats **within the run** (one plan discussed over several texts → one
+  task), then pull existing tasks from the relevant TickTick projects and drop any
+  candidate matching an existing task by normalized title + time. Jonny's #1 rule:
+  **never double-add.**
 - POST survivors to the TickTick Open API (`https://api.ticktick.com/open/v1/task`).
 - Advance the watermark only after a successful run; log created/skipped/errors.
 
@@ -168,15 +170,17 @@ Fleshed notes when they add value: 📍 location (full address) · 🕐 time · 
 
 ```
 index.js        # the "wakeup" entry point — runs the 4 steps in order
-src/scan.js     # chat.db reader + watermark
+src/scan.js     # chat.db reader + watermark + thread-window context
 src/sift.js     # regex gate + Haiku task-check
+src/haiku.js    # one deterministic Haiku call (temp 0) + is-task check
 src/schedule.js # Haiku scheduler (ported dump.js) + drive times
-src/dedup.js    # TickTick pull + compare
-src/ticktick.js # token refresh + task create
+src/dedup.js    # normalize + compare (vs existing AND within-run)
+src/ticktick.js # token / relay + task create
 src/drivetime.js# Google Routes lookup + static fallback
 src/schema.js   # JSON schemas + strict validation
+scripts/        # ticktick-auth (OAuth), install-timer / uninstall-timer (launchd)
 state.json      # { lastRowId } watermark (gitignored)
-test/           # fixture-based tests for sift, schema, dedup
+test/           # fixture-based tests for sift, schema, dedup, scheduler
 ```
 
 ## Decisions (locked)
@@ -189,14 +193,17 @@ test/           # fixture-based tests for sift, schema, dedup
   dud is acceptable and deleted by hand.
 - **Conversation context:** each candidate is scheduled with its surrounding thread
   window (both directions) so multi-turn plans assemble and already-handled things drop.
-- **Cadence:** frequent interval (target ~15 min), not daily.
+- **Cadence:** every ~15 min via a macOS **launchd** timer (`npm run install-timer`).
+- **AI lines are hard-ignored:** lexa (+1 321-297-3385) and Tomo/"Tamara"
+  (+1 415-770-0156) — their texts are build/automation chatter, never real tasks.
 
 ## Open questions (confirm before they matter)
 - **Extra Personal-area projects:** `dump.js` referenced Fitness / Shopping / Wish
   List as separate TickTick projects. The scheduling manuals list only the 6 above.
   Are Fitness/Shopping/Wish List still real projects to route into, or fold into
   Personal/Chores?
-- **Wakeup trigger mechanism:** interval cron vs launchd on-wake (interval first).
+- **Task content richness:** posts carry title/time/project/priority/tags/reminders;
+  full `content` notes (addresses, gear, links) is a polish pass still to wire end-to-end.
 
 ## Setup
 See `README.md` and `.env.example`. Requires macOS Full Disk Access on the running

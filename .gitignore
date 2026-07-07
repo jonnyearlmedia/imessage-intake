@@ -3,5 +3,6 @@ node_modules/
 .env.local
 state.json
 *.log
+run.log
 chat.copy.db
 chat.copy.db-*

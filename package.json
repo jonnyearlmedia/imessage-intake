@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning index.js",
+    "ticktick-auth": "node scripts/ticktick-auth.js",
     "test": "node --disable-warning=ExperimentalWarning --test"
   },
   "engines": {

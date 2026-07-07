@@ -6,7 +6,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite'); // built into Node 22.5+, no native build
 
 const DEFAULT_DB = path.join(os.homedir(), 'Library', 'Messages', 'chat.db');
 
@@ -61,12 +61,12 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
     if (fs.existsSync(src + suffix)) { try { fs.copyFileSync(src + suffix, copy + suffix); } catch {} }
   }
 
-  const db = new Database(copy, { readonly: true, fileMustExist: true });
+  const db = new DatabaseSync(copy, { readOnly: true });
   let rows;
   try {
     rows = db.prepare(`
       SELECT m.ROWID as rowId, m.text as text, m.attributedBody as attributedBody,
-             m.is_from_me as isFromMe, m.date as date,
+             m.is_from_me as isFromMe,
              h.id as sender, c.room_name as roomName, c.style as chatStyle
       FROM message m
       LEFT JOIN handle h ON m.handle_id = h.ROWID
@@ -80,16 +80,15 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
   }
 
   const messages = rows.map((r) => ({
-    rowId: r.rowId,
+    rowId: Number(r.rowId),
     text: extractText(r),
     sender: r.sender || '',
     isFromMe: !!r.isFromMe,
-    isGroup: !!r.roomName || r.chatStyle === 43,
-    date: r.date,
+    isGroup: !!r.roomName || Number(r.chatStyle) === 43,
   }));
 
   const kept = messages.filter((m) => keepMessage(m, { ignoreNumbers, minLength }));
-  const maxRowId = rows.length ? rows[rows.length - 1].rowId : watermark;
+  const maxRowId = rows.length ? Number(rows[rows.length - 1].rowId) : watermark;
   return { messages: kept, maxRowId, watermark, statePath: state };
 }
 

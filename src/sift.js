@@ -7,8 +7,9 @@
 const IMPERATIVE_VERBS = /\b(fix|build|send|review|update|call|email|text|buy|book|schedule|remind|finish|submit|pay|check|bring|clean|wash|grab|pick|drop|order|edit|shoot|film|deliver|invoice|reply|follow up|renew|cancel|confirm|sign|print|upload|download|install|fill out|return|mail|deposit|register)\b/;
 const INTENT_PHRASES = /\b(need to|needs to|gotta|have to|has to|got to|don'?t forget|dont forget|remember to|make sure|be sure to|should|supposed to|can you|could you|would you|will you|lmk|let me know|due|deadline|by (mon|tue|wed|thu|fri|sat|sun|tomorrow|today|\d))/;
 
-// Clear non-task chatter — reactions, greetings, acknowledgments.
-const CHATTER_ONLY = /^(lol+|lmao+|haha+|hehe+|ok+|okay|k|kk|yes+|no+|yup|nope|yeah|nah|thanks?|ty|thx|thank you|np|gn|gm|good ?night|good ?morning|hey+|hi+|hello|yo+|sup|wyd|hbu|nvm|word|bet|facts|fr|same|true|nice|cool|dope|congrats|omg|wow|damn|bruh|ikr|😂+|❤️+|👍+|🙏+)[!.\s]*$/i;
+// Clear non-task chatter — reactions, greetings, acknowledgments (incl. common
+// two-word acks like "ok cool" / "sounds good"). Whole-message match only.
+const CHATTER_ONLY = /^((lol|lmao|haha|hehe|ok|okay|k|kk|yes|no|yup|nope|yeah|nah|thanks|thank you|ty|thx|np|gn|gm|good ?night|good ?morning|hey|hi|hello|yo|sup|wyd|hbu|nvm|word|bet|facts|fr|same|true|nice|cool|dope|congrats|omg|wow|damn|bruh|ikr|sounds good|got it|will do|for sure|no worries|my bad|all good|omw|on my way|see (you|ya)|talk later|😂|❤️|👍|🙏)[\s,]*)+[!.\s]*$/i;
 
 // One classification: 'task' (strong signal, skip Haiku, go schedule),
 // 'maybe' (ambiguous, ask Haiku is_task), 'drop' (clear non-task, discard).

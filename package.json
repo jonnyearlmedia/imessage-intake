@@ -1,0 +1,21 @@
+{
+  "name": "imessage-intake",
+  "version": "0.1.0",
+  "description": "Local pipeline: scan new iMessages, find real tasks, schedule them into TickTick.",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning index.js",
+    "ticktick-auth": "node scripts/ticktick-auth.js",
+    "install-timer": "zsh scripts/install-timer.sh",
+    "uninstall-timer": "zsh scripts/uninstall-timer.sh",
+    "test": "node --disable-warning=ExperimentalWarning --test"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
+    "dotenv": "^16.4.5"
+  }
+}

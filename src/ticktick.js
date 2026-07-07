@@ -42,7 +42,25 @@ function toPayload(t) {
   return p;
 }
 
+// Two ways to post:
+//  - RELAY (TICKTICK_RELAY_URL set): POST the task to jonny-os's already-authorized
+//    /api/ticktick/add, which writes to TickTick with its own server token. Zero
+//    local TickTick auth. (Note: that endpoint forwards title/project/dates/priority;
+//    rich content + reminders need the endpoint enhanced — a follow-up.)
+//  - DIRECT (token in env): POST straight to the TickTick Open API with full fields.
+function relayUrl(env) { return env.TICKTICK_RELAY_URL || ''; }
+
 async function createTask(t, env = process.env, fetchImpl = fetch) {
+  const relay = relayUrl(env);
+  if (relay) {
+    const r = await fetchImpl(relay, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toPayload(t)),
+    });
+    if (!r.ok) throw new Error(`relay create failed: ${r.status} ${await r.text()}`);
+    return r.json();
+  }
   const token = await getToken(env);
   const r = await fetchImpl(TASK_URL, {
     method: 'POST',
@@ -54,6 +72,9 @@ async function createTask(t, env = process.env, fetchImpl = fetch) {
 }
 
 async function listProjectTasks(projectId, env = process.env, fetchImpl = fetch) {
+  // Relay mode has no direct token to read tasks — skip the dedup pull (the watermark
+  // still guarantees each message is processed once).
+  if (relayUrl(env) && !env.TICKTICK_ACCESS_TOKEN && !env.TICKTICK_REFRESH_TOKEN) return [];
   const token = await getToken(env);
   const r = await fetchImpl(`https://api.ticktick.com/open/v1/project/${projectId}/tasks`, {
     headers: { Authorization: `Bearer ${token}` },

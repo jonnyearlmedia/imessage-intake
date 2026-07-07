@@ -47,8 +47,9 @@ chat.db (new messages since watermark)
 - Selects inbound messages (`is_from_me = 0`) with `ROWID` greater than the saved
   **watermark**. The watermark is the source-level dedup: a message is processed
   exactly once, ever.
-- Filters out: lexa's line (+1 321-297-3385), Jonny's own sends, empty/too-short
-  bodies. Records sender + whether it's a group or 1:1.
+- Filters out **AI lines whose texts are never real tasks** — lexa's Linq line
+  (+1 321-297-3385) and Tomo / "Tamara" (+1 415-770-0156) — plus Jonny's own sends
+  and empty/too-short bodies. Records sender + whether it's a group or 1:1.
 
 ### 2. Sift (the cheap gate — no Ollama)
 Deliberately two-tier so we pay for intelligence only when we must:

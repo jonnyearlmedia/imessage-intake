@@ -42,8 +42,12 @@ function keepMessage(msg, { ignoreNumbers = [], minLength = 6 } = {}) {
   return true;
 }
 
+// Always-ignore AI lines — their texts are never Jonny's tasks:
+//   +13212973385 = lexa (Linq line) · +14157700156 = Tomo / "Tamara"
+const ALWAYS_IGNORE = ['+13212973385', '+14157700156'];
 function parseIgnoreNumbers(env = process.env) {
-  return (env.IGNORE_NUMBERS || '+13212973385').split(',').map((s) => s.trim()).filter(Boolean);
+  const extra = (env.IGNORE_NUMBERS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return [...new Set([...ALWAYS_IGNORE, ...extra])];
 }
 
 // Read new inbound messages. Returns [{ rowId, text, sender, isGroup, isFromMe, date }].

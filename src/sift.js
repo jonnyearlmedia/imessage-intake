@@ -11,6 +11,28 @@ const INTENT_PHRASES = /\b(need to|needs to|gotta|have to|has to|got to|don'?t f
 // two-word acks like "ok cool" / "sounds good"). Whole-message match only.
 const CHATTER_ONLY = /^((lol|lmao|haha|hehe|ok|okay|k|kk|yes|no|yup|nope|yeah|nah|thanks|thank you|ty|thx|np|gn|gm|good ?night|good ?morning|hey|hi|hello|yo|sup|wyd|hbu|nvm|word|bet|facts|fr|same|true|nice|cool|dope|congrats|omg|wow|damn|bruh|ikr|sounds good|got it|will do|for sure|no worries|my bad|all good|omw|on my way|see (you|ya)|talk later|😂|❤️|👍|🙏)[\s,]*)+[!.\s]*$/i;
 
+// Plan-finalizing confirmations — a keyword-less "yeah ok" / "sounds good" that
+// AGREES to something proposed earlier in the thread. These overlap CHATTER_ONLY
+// (they'd otherwise be dropped for $0), but when the surrounding thread holds an
+// open proposal they should re-open that thread for the scheduler. The scheduler
+// reads the whole window, so it — not this gate — decides if a task actually
+// finalized; here we only flag "this MIGHT be a confirmation". Whole-message only.
+const CONFIRMATION = /^((yes|yeah|yep|yup|ya|sure|ok|okay|k|kk|sounds good|that works|works for me|works|i'?m in|i'?ll be there|i'?ll come|i'?ll make it|see you( then| there)?|see ya( then)?|confirmed|deal|down|for sure|will do|let'?s do it|perfect|great|absolutely|definitely)[\s,]*)+[!.\s]*$/i;
+
+// Cues that some concrete plan was proposed in a thread: an action verb, an intent
+// phrase, or a time/date reference. Used to decide whether a bare confirmation is
+// worth escalating. Pure — takes an already-fetched thread window.
+const TIME_REF = /\b(\d{1,2}(:\d{2})?\s*(am|pm)|noon|midnight|tonight|tomorrow|today|mon(day)?|tues?(day)?|wed(nesday)?|thu(r|rs|rsday)?|fri(day)?|sat(urday)?|sun(day)?|next week|this week)\b/i;
+function threadHasProposal(thread) {
+  if (!Array.isArray(thread)) return false;
+  return thread.some((m) => {
+    const t = String((m && m.text) || '');
+    if (!t) return false;
+    const lc = t.toLowerCase();
+    return IMPERATIVE_VERBS.test(lc) || INTENT_PHRASES.test(lc) || TIME_REF.test(t);
+  });
+}
+
 // One classification: 'task' (strong signal, skip Haiku, go schedule),
 // 'maybe' (ambiguous, ask Haiku is_task), 'drop' (clear non-task, discard).
 function classify(text, minLength = 6) {
@@ -19,6 +41,11 @@ function classify(text, minLength = 6) {
 
   const lc = raw.toLowerCase();
 
+  // a bare confirmation ("yeah ok", "sounds good") — checked BEFORE chatter so it
+  // isn't dropped for $0. It escalates only if its thread has an open proposal
+  // (decided by the caller, which has the thread window). Single-word acks under
+  // minLength are already gone by here.
+  if (CONFIRMATION.test(lc)) return 'confirm';
   // pure chatter / reactions
   if (CHATTER_ONLY.test(lc)) return 'drop';
   // URL-only or emoji-only messages carry no task
@@ -45,6 +72,9 @@ async function siftMessages(messages, { isTaskFn, minLength = 6 } = {}) {
     const verdict = classify(m.text, minLength);
     if (verdict === 'drop') continue;
     if (verdict === 'task') { confirmed.push({ ...m, via: 'regex' }); continue; }
+    // bare confirmation → carry it through tagged; the caller gates it on whether
+    // the thread window actually holds an open proposal before scheduling.
+    if (verdict === 'confirm') { confirmed.push({ ...m, via: 'confirm' }); continue; }
     // 'maybe' → Haiku is_task. No isTaskFn provided (e.g. tests) → conservative drop.
     if (typeof isTaskFn !== 'function') continue;
     let isTask = false;
@@ -54,4 +84,7 @@ async function siftMessages(messages, { isTaskFn, minLength = 6 } = {}) {
   return confirmed;
 }
 
-module.exports = { classify, siftMessages, IMPERATIVE_VERBS, INTENT_PHRASES, CHATTER_ONLY };
+module.exports = {
+  classify, siftMessages, threadHasProposal,
+  IMPERATIVE_VERBS, INTENT_PHRASES, CHATTER_ONLY, CONFIRMATION, TIME_REF,
+};

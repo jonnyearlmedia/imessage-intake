@@ -81,31 +81,42 @@ that turns "stuff people text you to do" into real calendar tasks so nothing sli
 - [x] AI lines (lexa + Tomo) permanently blocked
 - [x] TickTick posting working (authorized via the one-time OAuth helper)
 - [x] Auto-timer (launchd) — `npm run install-timer`
-- [x] 24 automated tests covering the sift, schema, dedup, and scheduler helpers
+- [x] **Playbook** (`src/playbook.js`) — known senders → name + routing hint, matched by
+      last-10 digits, fed to the scheduler. (Was roadmap item #1, "the biggest quality
+      lever." Shipped.)
+- [x] **Live drive times wired** — `applyLiveDriveTimes` runs the away-event chain
+      through the Google Routes lookup (traffic-aware) with the padded static table as
+      fallback, resizing each travel block and sliding "Get Ready" to stay tight while
+      the event itself stays put. Static fallback still corrects the prompt's un-padded
+      baseline, so it helps even before a Maps key is added.
+- [x] **Richer posted tasks** — the scheduler fills the `content` notes (address, time,
+      contacts, gear, links, travel) for every timed task; posted end-to-end in direct
+      TickTick mode. (Relay-endpoint forwarding of rich fields is the one external piece.)
+- [x] **The "bare yes" tail** — a keyword-less confirmation ("yeah ok", "sounds good")
+      re-opens its thread for the scheduler when the thread holds an open proposal;
+      dropped for free otherwise. No new persistent state — the thread window is the memory.
+- [x] **Extra-projects question settled** — Fitness / Shopping / Wish List fold into
+      Personal / Chores (no live IDs, manuals list only 6). See CLAUDE.md.
+- [x] 38 automated tests covering sift (incl. confirmations), schema, dedup, drive-time
+      resizing, and scheduler helpers
 - [x] Cleaned up the first live run: removed the 13 junk tasks and cleared 103 overdue
 
 ---
 
 ## What's LEFT / future ideas
 
-Nothing is *required* — it works and runs itself. These are upgrades:
+All five original roadmap items are now shipped (see DONE above). What remains is
+genuinely optional and mostly outside this repo:
 
-1. **The playbook (rules for specific senders/patterns).** Teach it "texts from Trish
-   about a shoot → VPH shoot ecosystem," "Renee → therapy chain in Fairfield," known
-   people = known routing. Skips the AI for known patterns (cheaper) and makes it more
-   accurate. This is the biggest quality lever and pairs with everything above.
-2. **Richer posted tasks.** Right now the posted task carries title/time/project/
-   priority/tags/reminders. Filling in the full `content` notes (addresses, contacts,
-   gear, links) end-to-end is a polish pass.
-3. **Live drive times.** The scheduler uses your static drive table today. Wiring the
-   live Google Routes lookup (traffic-aware, +pad) is built in `drivetime.js` and just
-   needs to be fed into the travel blocks. Optional — needs the Maps key.
-4. **The "bare yes" tail.** If a plan finalizes with a keyword-less "yeah ok," nothing
-   trips the gate to re-check that thread. Rare; would need light "pending thread"
-   memory to catch.
-5. **Confirm the extra projects.** Old `dump.js` had Fitness / Shopping / Wish List as
-   separate TickTick projects. Your manuals list only 6. Decide: real projects or fold
-   into Personal/Chores.
+1. **Flip on live traffic.** The wiring is done; it uses the padded static table until
+   you drop a `GOOGLE_MAPS_API_KEY` into `.env.local` (the same key lexa uses). Add the
+   key and the away-event chains start pulling real traffic-aware times — no code change.
+2. **Enhance the jonny-os relay endpoint (external).** In relay mode the endpoint only
+   forwards title/project/dates/priority, so rich `content` + reminders only post via a
+   direct TickTick token today. Teaching `/api/ticktick/add` to forward the extra fields
+   would light up rich notes in relay mode too. That's a change in *jonny-os*, not here.
+3. **Grow the playbook.** As new task-senders show up, add them to `src/playbook.js`
+   (name + routing hint). Ongoing curation, not a build.
 
 ---
 

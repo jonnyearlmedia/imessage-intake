@@ -19,6 +19,7 @@ const { isTask } = require('./src/haiku');
 const { scheduleTask } = require('./src/schedule');
 const { partitionScheduled } = require('./src/schema');
 const { partitionDuplicates, dedupeWithinBatch } = require('./src/dedup');
+const { lookupContact } = require('./src/playbook');
 const ticktick = require('./src/ticktick');
 
 const POST = process.argv.includes('--post') || process.env.POST === '1';
@@ -47,8 +48,9 @@ async function main() {
     // multi-turn plans, and things Jonny already handled in his replies.
     let thread = [];
     try { thread = scan.readThreadWindow(copyPath, m.chatId, m.rowId, contextWindow); } catch {}
+    const contact = lookupContact(m.sender);
     let items = [];
-    try { items = await scheduleTask(m.text, { env, thread }); }
+    try { items = await scheduleTask(m.text, { env, thread, contact }); }
     catch (e) { log(`[schedule] skip (bad JSON) "${clip(m.text)}": ${e.message}`); continue; }
     const { valid, rejected } = partitionScheduled(items);
     for (const r of rejected) log(`[schedule] dropped invalid task from "${clip(m.text)}": ${r.errors.join('; ')}`);

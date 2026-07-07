@@ -48,9 +48,10 @@ chat.db (new messages since watermark)
 - Selects inbound messages (`is_from_me = 0`) with `ROWID` greater than the saved
   **watermark**. The watermark is the source-level dedup: a message is processed
   exactly once, ever.
-- Filters out **AI lines whose texts are never real tasks** — lexa's Linq line
-  (+1 321-297-3385) and Tomo / "Tamara" (+1 415-770-0156) — plus Jonny's own sends
-  and empty/too-short bodies. Records sender + whether it's a group or 1:1.
+- Filters out **AI/automation lines whose texts are never real tasks** — lexa's Linq
+  line (+1 321-297-3385), Tomo / "Tamara" (+1 415-770-0156), and Lindy
+  (+1 415-434-9162) — plus Jonny's own sends and empty/too-short bodies. Records
+  sender + whether it's a group or 1:1. **Scans group chats too.**
 
 ### 2. Sift (the cheap gate — no Ollama)
 Deliberately two-tier so we pay for intelligence only when we must:
@@ -171,6 +172,7 @@ Fleshed notes when they add value: 📍 location (full address) · 🕐 time · 
 ```
 index.js        # the "wakeup" entry point — runs the 4 steps in order
 src/scan.js     # chat.db reader + watermark + thread-window context
+src/playbook.js # known senders → name + routing hint (phone-normalized)
 src/sift.js     # regex gate + Haiku task-check
 src/haiku.js    # one deterministic Haiku call (temp 0) + is-task check
 src/schedule.js # Haiku scheduler (ported dump.js) + drive times
@@ -194,8 +196,12 @@ test/           # fixture-based tests for sift, schema, dedup, scheduler
 - **Conversation context:** each candidate is scheduled with its surrounding thread
   window (both directions) so multi-turn plans assemble and already-handled things drop.
 - **Cadence:** every ~15 min via a macOS **launchd** timer (`npm run install-timer`).
-- **AI lines are hard-ignored:** lexa (+1 321-297-3385) and Tomo/"Tamara"
-  (+1 415-770-0156) — their texts are build/automation chatter, never real tasks.
+- **AI lines are hard-ignored:** lexa (+1 321-297-3385), Tomo/"Tamara"
+  (+1 415-770-0156), Lindy (+1 415-434-9162) — build/automation chatter, never tasks.
+- **Playbook (`src/playbook.js`):** known senders map to a name + routing hint that's
+  fed to the scheduler (e.g. Clinic Ole → appointments; Mama/Ate Janel → route by
+  content). Matched by last-10 digits so number formatting doesn't matter. Grow it as
+  new task-senders show up.
 
 ## Open questions (confirm before they matter)
 - **Extra Personal-area projects:** `dump.js` referenced Fitness / Shopping / Wish

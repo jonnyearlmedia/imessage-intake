@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite'); // built into Node 22.5+, no native build
+const { normalizePhone } = require('./playbook');
 
 const DEFAULT_DB = path.join(os.homedir(), 'Library', 'Messages', 'chat.db');
 
@@ -37,14 +38,14 @@ function keepMessage(msg, { ignoreNumbers = [], minLength = 6 } = {}) {
   if (!msg || msg.isFromMe) return false;
   const body = (msg.text || '').trim();
   if (body.length < minLength) return false;
-  const sender = (msg.sender || '').replace(/[\s()-]/g, '');
-  if (ignoreNumbers.map((n) => n.replace(/[\s()-]/g, '')).includes(sender)) return false;
+  const sender = normalizePhone(msg.sender);
+  if (sender && ignoreNumbers.map(normalizePhone).includes(sender)) return false;
   return true;
 }
 
-// Always-ignore AI lines — their texts are never Jonny's tasks:
-//   +13212973385 = lexa (Linq line) · +14157700156 = Tomo / "Tamara"
-const ALWAYS_IGNORE = ['+13212973385', '+14157700156'];
+// Always-ignore AI/automation lines — their texts are never Jonny's tasks:
+//   +13212973385 = lexa (Linq) · +14157700156 = Tomo/"Tamara" · +14154349162 = Lindy
+const ALWAYS_IGNORE = ['+13212973385', '+14157700156', '+14154349162'];
 function parseIgnoreNumbers(env = process.env) {
   const extra = (env.IGNORE_NUMBERS || '').split(',').map((s) => s.trim()).filter(Boolean);
   return [...new Set([...ALWAYS_IGNORE, ...extra])];

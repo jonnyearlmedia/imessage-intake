@@ -63,6 +63,11 @@ Deliberately two-tier so we pay for intelligence only when we must:
   JSON `{ "is_task": boolean }`. **Fail-safe:** any error, timeout, or unparseable
   response drops the text (never crash, never post junk). Mirrors lexa's
   `triage.ts` pattern.
+- **Bare-confirmation path (the "yeah ok" tail):** a keyword-less confirmation
+  ("sounds good", "yeah ok") is tagged `via:'confirm'` instead of dropped. It only
+  re-opens its thread for the scheduler when the thread window actually holds an open
+  proposal (`threadHasProposal` — a verb/intent/time cue). No proposal → skipped with
+  no model cost. This catches plans that finalize on a reply carrying no task keywords.
 
 Ollama / a local 3B model was considered and **rejected**: nothing else in Jonny's
 stack uses it, and Haiku already is the proven cheap layer. The regex gate provides
@@ -175,10 +180,11 @@ src/scan.js     # chat.db reader + watermark + thread-window context
 src/playbook.js # known senders → name + routing hint (phone-normalized)
 src/sift.js     # regex gate + Haiku task-check
 src/haiku.js    # one deterministic Haiku call (temp 0) + is-task check
-src/schedule.js # Haiku scheduler (ported dump.js) + drive times
+src/schedule.js # Haiku scheduler (ported dump.js) — emits the away-event chain
 src/dedup.js    # normalize + compare (vs existing AND within-run)
 src/ticktick.js # token / relay + task create
-src/drivetime.js# Google Routes lookup + static fallback
+src/drivetime.js# Google Routes lookup + static fallback + applyLiveDriveTimes (the
+                #   post-pass that resizes travel blocks and slides Get Ready)
 src/schema.js   # JSON schemas + strict validation
 scripts/        # ticktick-auth (OAuth), install-timer / uninstall-timer (launchd)
 state.json      # { lastRowId } watermark (gitignored)
@@ -203,13 +209,21 @@ test/           # fixture-based tests for sift, schema, dedup, scheduler
   content). Matched by last-10 digits so number formatting doesn't matter. Grow it as
   new task-senders show up.
 
-## Open questions (confirm before they matter)
-- **Extra Personal-area projects:** `dump.js` referenced Fitness / Shopping / Wish
-  List as separate TickTick projects. The scheduling manuals list only the 6 above.
-  Are Fitness/Shopping/Wish List still real projects to route into, or fold into
-  Personal/Chores?
-- **Task content richness:** posts carry title/time/project/priority/tags/reminders;
-  full `content` notes (addresses, gear, links) is a polish pass still to wire end-to-end.
+## Resolved decisions (were open questions)
+- **Extra Personal-area projects — FOLDED (settled).** `dump.js` referenced Fitness /
+  Shopping / Wish List as separate TickTick projects. The current scheduling manuals
+  list only the 6 above, we hold no live project IDs for those three, and `schema.js`
+  admits only the 6 — so a task routed to a non-existent project would vanish into the
+  invisible Inbox. Decision: **fold them into the 6.** Fitness / Shopping / Wish List →
+  **Personal**; anything household → **Chores**. Not real routing targets. (If they ever
+  become real TickTick projects, add their IDs to `schema.js` + `schedule.js` and revisit.)
+- **Task content richness — WIRED (settled).** The scheduler fills the `content` notes
+  (📍 address · 🕐 time · 📋 what · 👤 contacts · 🎒 gear · 🔗 links · 🚗 travel) for every
+  timed task / away chain, `validateScheduledTask` passes them through, and `toPayload`
+  posts them. End-to-end in **direct** TickTick mode. The one remaining gap is external:
+  the jonny-os **relay** endpoint only forwards title/project/dates/priority, so rich
+  content + reminders land only via a direct token (or once that endpoint is enhanced —
+  out of this repo's scope).
 
 ## Setup
 See `README.md` and `.env.example`. Requires macOS Full Disk Access on the running

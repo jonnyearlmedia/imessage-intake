@@ -20,6 +20,8 @@ const { scheduleTask } = require('./src/schedule');
 const { partitionScheduled } = require('./src/schema');
 const { partitionDuplicates, dedupeWithinBatch } = require('./src/dedup');
 const { lookupContact } = require('./src/playbook');
+const { threadHasProposal } = require('./src/sift');
+const { applyLiveDriveTimes } = require('./src/drivetime');
 const ticktick = require('./src/ticktick');
 
 const POST = process.argv.includes('--post') || process.env.POST === '1';
@@ -30,6 +32,8 @@ async function main() {
   const env = process.env;
 
   const contextWindow = Number(env.CONTEXT_WINDOW || 10);
+
+  log(`[drivetime] ${env.GOOGLE_MAPS_API_KEY ? 'live Google Routes (traffic-aware)' : 'static table (set GOOGLE_MAPS_API_KEY for live traffic)'}`);
 
   // 1. SCAN
   const { messages, maxRowId, watermark, totalNew, capped, statePath, copyPath } = scan.readNewMessages({ env });
@@ -48,10 +52,20 @@ async function main() {
     // multi-turn plans, and things Jonny already handled in his replies.
     let thread = [];
     try { thread = scan.readThreadWindow(copyPath, m.chatId, m.rowId, contextWindow); } catch {}
+    // "bare yes" tail: a keyword-less confirmation ("yeah ok", "sounds good") only
+    // finalizes a task when the thread actually holds an open proposal. No proposal
+    // in the window → nothing to confirm, skip before spending a scheduler call.
+    if (m.via === 'confirm' && !threadHasProposal(thread)) {
+      log(`[sift] confirm "${clip(m.text)}" — no open proposal in thread, skipped`);
+      continue;
+    }
     const contact = lookupContact(m.sender);
     let items = [];
     try { items = await scheduleTask(m.text, { env, thread, contact }); }
     catch (e) { log(`[schedule] skip (bad JSON) "${clip(m.text)}": ${e.message}`); continue; }
+    // Replace the prompt's static travel-block durations with live/padded drive times.
+    try { items = await applyLiveDriveTimes(items, { env }); }
+    catch (e) { log(`[drivetime] live lookup skipped for "${clip(m.text)}": ${e.message}`); }
     const { valid, rejected } = partitionScheduled(items);
     for (const r of rejected) log(`[schedule] dropped invalid task from "${clip(m.text)}": ${r.errors.join('; ')}`);
     for (const v of valid) planned.push(v);

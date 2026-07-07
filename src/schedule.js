@@ -79,8 +79,8 @@ TIME + DURATION:
 TITLES: start with one fitting emoji (most specific wins), Title Case, action-oriented.
 e.g. "🎬 Crumbs Restaurant Shoot" · "📧 Email Trish — May Invoice" · "🦷 Dentist Appointment" · "🧺 Do Laundry" · "🧠 Therapy Session" · "🛒 Grocery Run"
 
-CONTENT (task notes, only if useful, lines joined with \\n): 📍 full address · 🕐 time · 📋 what · 👤 contacts · 🎒 gear · 🔗 links.
-Known: DVC/Pleasant Hill/VPH → 321 Golf Club Rd, Pleasant Hill CA 94523 · Therapy/Renee → 470 Chadbourne Rd, Fairfield CA 94534.
+CONTENT (task notes — ALWAYS fill for any timed task or away-event chain; omit only for a trivial undated one-liner. Join lines with \\n): 📍 full address · 🕐 time · 📋 what / why · 👤 contacts (name + number when known) · 🎒 gear to bring · 🔗 links · 🚗 travel note. On EVERY travel block, put the destination street address on the 📍 line — the drive-time pass reads it to size the block.
+Known addresses: DVC/Pleasant Hill/VPH → 321 Golf Club Rd, Pleasant Hill CA 94523 · Therapy/Renee → 470 Chadbourne Rd, Fairfield CA 94534 · Home (travel origin) → 98 Castellina Cir, American Canyon CA 94503.
 
 PRIORITY: 5 urgent/asap/deadline · 3 time-sensitive this week · 1 someday/wishlist · 0 default.
 TAGS (0–2, lowercase, only if clearly applicable): appointment | shoot | errand | assignment | shift | event | travel.

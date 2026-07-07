@@ -178,12 +178,24 @@ state.json      # { lastRowId } watermark (gitignored)
 test/           # fixture-based tests for sift, schema, dedup
 ```
 
+## Decisions (locked)
+- **Capture-first:** a concrete ask directed at Jonny becomes a task even if he never
+  replies. Only skip on positive done/declined evidence or no ask at all. Jonny does
+  not reply to everything, so silence must not drop real tasks.
+- **Post destination = real projects, auto (option B).** No separate "Intake" list, no
+  digest. Survivors post straight into their real TickTick project. The guardrails
+  (dedup, schema validation, watermark) are what make auto-posting safe; an occasional
+  dud is acceptable and deleted by hand.
+- **Conversation context:** each candidate is scheduled with its surrounding thread
+  window (both directions) so multi-turn plans assemble and already-handled things drop.
+- **Cadence:** frequent interval (target ~15 min), not daily.
+
 ## Open questions (confirm before they matter)
 - **Extra Personal-area projects:** `dump.js` referenced Fitness / Shopping / Wish
   List as separate TickTick projects. The scheduling manuals list only the 6 above.
   Are Fitness/Shopping/Wish List still real projects to route into, or fold into
   Personal/Chores?
-- **Wakeup trigger:** interval cron vs launchd on-wake. Starting with an interval.
+- **Wakeup trigger mechanism:** interval cron vs launchd on-wake (interval first).
 
 ## Setup
 See `README.md` and `.env.example`. Requires macOS Full Disk Access on the running

@@ -76,7 +76,7 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
     trueMax = c.mx != null ? Number(c.mx) : watermark;
     rows = db.prepare(`
       SELECT m.ROWID as rowId, m.text as text, m.attributedBody as attributedBody,
-             m.is_from_me as isFromMe,
+             m.is_from_me as isFromMe, cmj.chat_id as chatId,
              h.id as sender, c.room_name as roomName, c.style as chatStyle
       FROM message m
       LEFT JOIN handle h ON m.handle_id = h.ROWID
@@ -97,15 +97,42 @@ function readNewMessages({ env = process.env, dbPath, statePath } = {}) {
     sender: r.sender || '',
     isFromMe: !!r.isFromMe,
     isGroup: !!r.roomName || Number(r.chatStyle) === 43,
+    chatId: r.chatId != null ? Number(r.chatId) : null,
   }));
 
   const kept = messages.filter((m) => keepMessage(m, { ignoreNumbers, minLength }));
   const maxRowId = trueMax;
   const capped = totalNew > rows.length;
-  return { messages: kept, maxRowId, watermark, totalNew, capped, statePath: state };
+  return { messages: kept, maxRowId, watermark, totalNew, capped, statePath: state, copyPath: copy };
+}
+
+// Pull the last `limit` messages in one chat up to (and including) beforeRowId —
+// BOTH directions, so the scheduler sees Jonny's own replies for context. Reuses
+// the copy already made by readNewMessages (no second copy). Returns ascending.
+function readThreadWindow(copyPath, chatId, beforeRowId, limit = 10) {
+  if (chatId == null || !copyPath) return [];
+  const db = new DatabaseSync(copyPath, { readOnly: true });
+  try {
+    const rows = db.prepare(`
+      SELECT m.ROWID as rowId, m.text as text, m.attributedBody as attributedBody,
+             m.is_from_me as isFromMe, h.id as sender
+      FROM message m
+      LEFT JOIN handle h ON m.handle_id = h.ROWID
+      JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
+      WHERE cmj.chat_id = ? AND m.ROWID <= ?
+      ORDER BY m.ROWID DESC
+      LIMIT ?
+    `).all(chatId, beforeRowId, limit);
+    rows.reverse();
+    return rows
+      .map((r) => ({ rowId: Number(r.rowId), text: extractText(r), sender: r.sender || '', isFromMe: !!r.isFromMe }))
+      .filter((m) => m.text && m.text.trim());
+  } finally {
+    db.close();
+  }
 }
 
 module.exports = {
   DEFAULT_DB, extractText, keepMessage, parseIgnoreNumbers,
-  loadWatermark, saveWatermark, readNewMessages, defaultState,
+  loadWatermark, saveWatermark, readNewMessages, readThreadWindow, defaultState,
 };

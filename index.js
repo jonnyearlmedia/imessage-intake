@@ -28,8 +28,10 @@ function log(...a) { console.log(...a); }
 async function main() {
   const env = process.env;
 
+  const contextWindow = Number(env.CONTEXT_WINDOW || 10);
+
   // 1. SCAN
-  const { messages, maxRowId, watermark, totalNew, capped, statePath } = scan.readNewMessages({ env });
+  const { messages, maxRowId, watermark, totalNew, capped, statePath, copyPath } = scan.readNewMessages({ env });
   log(`[scan] ${totalNew} new inbound since ROWID ${watermark}; ${messages.length} kept for sifting${capped ? ' (capped to recent slice — raise MAX_MESSAGES to reach further back)' : ''}`);
   if (!messages.length) { log('[done] nothing to sift.'); return; }
 
@@ -41,8 +43,12 @@ async function main() {
   // 3. SCHEDULE (one Haiku call per task → strict JSON → validate)
   const planned = [];
   for (const m of confirmed) {
+    // pull the surrounding thread (both directions) so the scheduler has context:
+    // multi-turn plans, and things Jonny already handled in his replies.
+    let thread = [];
+    try { thread = scan.readThreadWindow(copyPath, m.chatId, m.rowId, contextWindow); } catch {}
     let items = [];
-    try { items = await scheduleTask(m.text, { env }); }
+    try { items = await scheduleTask(m.text, { env, thread }); }
     catch (e) { log(`[schedule] skip (bad JSON) "${clip(m.text)}": ${e.message}`); continue; }
     const { valid, rejected } = partitionScheduled(items);
     for (const r of rejected) log(`[schedule] dropped invalid task from "${clip(m.text)}": ${r.errors.join('; ')}`);

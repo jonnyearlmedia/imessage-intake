@@ -6,3 +6,4 @@ state.json
 run.log
 chat.copy.db
 chat.copy.db-*
+.DS_Store

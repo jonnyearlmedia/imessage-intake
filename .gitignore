@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.local
+state.json
+*.log
+chat.copy.db
+chat.copy.db-*

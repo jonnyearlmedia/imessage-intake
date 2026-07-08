@@ -6,9 +6,12 @@
   "main": "index.js",
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning index.js",
+    "relay": "node --disable-warning=ExperimentalWarning relay.js",
     "ticktick-auth": "node scripts/ticktick-auth.js",
     "install-timer": "zsh scripts/install-timer.sh",
     "uninstall-timer": "zsh scripts/uninstall-timer.sh",
+    "install-relay-timer": "zsh scripts/install-relay-timer.sh",
+    "uninstall-relay-timer": "zsh scripts/uninstall-relay-timer.sh",
     "test": "node --disable-warning=ExperimentalWarning --test"
   },
   "engines": {

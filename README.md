@@ -35,6 +35,26 @@ npm start          # one pass: process everything new since the last run
 
 "Wakeup" = running it on a timer (cron or launchd every N minutes). See CLAUDE.md.
 
+## Trish relay (texts with Trish → jonny-os Communications Log)
+
+A **second, independent** pipeline in this repo. It watches only the 1:1 iMessage
+thread with Trish (**both directions**) and ships new messages to the jonny-os
+`/api/imessage/ingest` webhook, which runs the AI pass and writes the Notion
+Communications Log row. It does NOT create tasks and shares nothing with the task
+pipeline above except the chat.db plumbing — its own watermark (`state.trish.json`)
+keeps them fully separate.
+
+Add to `.env.local` (see `.env.example`): `JONNY_OS_INGEST_URL`, `CRON_SECRET`,
+and optionally `TRISH_NUMBER` (defaults to Trish's number).
+
+```bash
+npm run relay                 # dry run — shows what it WOULD ship, sends nothing
+npm run relay -- --post       # for real — POST to jonny-os, then advance watermark
+npm run install-relay-timer   # run it automatically every 15 min (set-and-forget)
+npm run uninstall-relay-timer # stop the automatic relay runs
+tail -f relay.log             # watch the relay timer
+```
+
 ## Test
 
 ```bash

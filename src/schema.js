@@ -3,14 +3,16 @@
 // same validation runs in tests and in production. A failed validation NEVER
 // throws into the pipeline; callers get {ok:false, errors} and skip+log the item.
 
-const LIVE_PROJECT_IDS = new Set([
-  '699618ace9edd115282d1114', // Personal
-  '69c84865fb1b112958a4b6d5', // VPH
-  '6a28e8818f084696cd480594', // MATH-182
-  '699760fcc71c71000000097f', // School Admin
-  '699626b3c71c7100000004d9', // Admin
-  '69962017c71c71000000005e', // Chores
-]);
+// id → human name, so the approval message can say "Personal" not the raw id.
+const PROJECT_NAMES = {
+  '699618ace9edd115282d1114': 'Personal',
+  '69c84865fb1b112958a4b6d5': 'VPH',
+  '6a28e8818f084696cd480594': 'MATH-182',
+  '699760fcc71c71000000097f': 'School Admin',
+  '699626b3c71c7100000004d9': 'Admin',
+  '69962017c71c71000000005e': 'Chores',
+};
+const LIVE_PROJECT_IDS = new Set(Object.keys(PROJECT_NAMES));
 
 // Retired / hidden — a task routed here is a hard reject (never post).
 const BANNED_PROJECT_IDS = new Set([
@@ -77,6 +79,7 @@ function partitionScheduled(arr) {
 }
 
 module.exports = {
+  PROJECT_NAMES,
   LIVE_PROJECT_IDS,
   BANNED_PROJECT_IDS,
   validateTaskCheck,
